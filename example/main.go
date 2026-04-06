@@ -21,12 +21,13 @@ func main() {
 		"AD1000163781VN84804A2BJJMEBFVCS0", // Ин прогресс 50 руб.
 	}
 
-	client, err := sbpchecker.NewClient(sbpchecker.Options{Headless: true, EntityPoolSize: 8})
+	client, err := sbpchecker.NewClient(sbpchecker.Options{Headless: true, EntityPoolSize: 20})
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	wg := sync.WaitGroup{}
+	timeStart := time.Now()
 	for i := 0; i < 40; i++ {
 		wg.Add(1)
 		go func(i int) {
@@ -56,4 +57,5 @@ func main() {
 		}((i + 1) % len(orders))
 	}
 	wg.Wait()
+	fmt.Println("Overall:", time.Since(timeStart).String())
 }

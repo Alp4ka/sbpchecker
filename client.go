@@ -16,10 +16,10 @@ import (
 // Параллелизм ограничивается пулом сущностей EntityPoolSize: на одну сущность — один запрос.
 // Если свободных сущностей нет, FetchPaymentStatus вернёт ErrNoFreeEntity.
 type Client struct {
-	mu      sync.RWMutex
-	pw      *playwright.Playwright
-	browser playwright.Browser
-	opts    Options
+	mu       sync.RWMutex
+	pw       *playwright.Playwright
+	browser  playwright.Browser
+	opts     Options
 	entities chan struct{}
 }
 
@@ -96,8 +96,8 @@ func (c *Client) FetchPaymentStatus(ctx context.Context, orderID string) (*Resul
 	pw := c.pw
 	c.mu.RUnlock()
 
-	if !c.acquireEntity() {
-		return nil, ErrNoFreeEntity
+	if acquireErr := c.acquireEntity(ctx); acquireErr != nil {
+		return nil, acquireErr
 	}
 	defer c.releaseEntity()
 
@@ -169,12 +169,12 @@ func (c *Client) FetchPaymentStatus(ctx context.Context, orderID string) (*Resul
 	}, nil
 }
 
-func (c *Client) acquireEntity() bool {
+func (c *Client) acquireEntity(ctx context.Context) error {
 	select {
 	case <-c.entities:
-		return true
-	default:
-		return false
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 

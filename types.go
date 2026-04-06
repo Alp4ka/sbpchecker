@@ -81,8 +81,6 @@ var (
 	ErrClosedClient = fmt.Errorf("%s: client is closed", errPrefix)
 	// ErrInvalidOrderID возвращается, когда передан неверный ID заказа.
 	ErrInvalidOrderID = fmt.Errorf("%s: invalid order ID", errPrefix)
-	// ErrNoFreeEntity возвращается, когда в пуле нет свободной сущности.
-	ErrNoFreeEntity = fmt.Errorf("%s: no free entity", errPrefix)
 )
 
 type NSPKPaymentLinkResponseBody struct {
