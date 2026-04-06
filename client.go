@@ -6,17 +6,21 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/playwright-community/playwright-go"
 )
 
 // Client переиспользует один процесс Chromium; отдельный BrowserContext создаётся на каждый вызов FetchPaymentStatus.
-// Параллельные вызовы допустимы в пределах потокобезопасности playwright-go.
+// Параллелизм ограничивается пулом сущностей EntityPoolSize: на одну сущность — один запрос.
+// Если свободных сущностей нет, FetchPaymentStatus вернёт ErrNoFreeEntity.
 type Client struct {
+	mu      sync.RWMutex
 	pw      *playwright.Playwright
 	browser playwright.Browser
 	opts    Options
+	entities chan struct{}
 }
 
 // NewClient запускает Playwright и поднимает Chromium с учётом Options.
@@ -40,7 +44,16 @@ func NewClient(opt Options) (*Client, error) {
 		return nil, fmt.Errorf("%w: %w", ErrNoPlaywright, err)
 	}
 
-	return &Client{pw: pw, browser: browser, opts: opt}, nil
+	entityPoolSize := opt.EntityPoolSize
+	if entityPoolSize <= 0 {
+		entityPoolSize = 1
+	}
+	entities := make(chan struct{}, entityPoolSize)
+	for range entityPoolSize {
+		entities <- struct{}{}
+	}
+
+	return &Client{pw: pw, browser: browser, opts: opt, entities: entities}, nil
 }
 
 // Close завершает браузер и драйвер.
@@ -48,6 +61,10 @@ func (c *Client) Close() error {
 	if c == nil {
 		return nil
 	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	var err error
 	if c.browser != nil {
 		err = errors.Join(err, c.browser.Close())
@@ -62,13 +79,27 @@ func (c *Client) Close() error {
 
 // FetchPaymentStatus открывает ссылку в новом мобильном контексте и возвращает Result.
 func (c *Client) FetchPaymentStatus(ctx context.Context, orderID string) (*Result, error) {
-	if c == nil || c.browser == nil || c.pw == nil {
+	if c == nil {
 		return nil, ErrClosedClient
 	} else if !_reOrderIDPattern.MatchString(orderID) {
 		return nil, ErrInvalidOrderID
 	} else if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+
+	c.mu.RLock()
+	if c.browser == nil || c.pw == nil {
+		c.mu.RUnlock()
+		return nil, ErrClosedClient
+	}
+	browser := c.browser
+	pw := c.pw
+	c.mu.RUnlock()
+
+	if !c.acquireEntity() {
+		return nil, ErrNoFreeEntity
+	}
+	defer c.releaseEntity()
 
 	payURL, err := getPayURL(orderID, c.opts)
 	if err != nil {
@@ -80,7 +111,7 @@ func (c *Client) FetchPaymentStatus(ctx context.Context, orderID string) (*Resul
 		return nil, err
 	}
 
-	browserContext, err := newBrowserContext(c.browser, c.pw, c.opts)
+	browserContext, err := newBrowserContext(browser, pw, c.opts)
 	if err != nil {
 		return nil, err
 	}
@@ -136,6 +167,22 @@ func (c *Client) FetchPaymentStatus(ctx context.Context, orderID string) (*Resul
 		Status:         status,
 		RemoteResponse: paymentLinkResponse.NSPKResp,
 	}, nil
+}
+
+func (c *Client) acquireEntity() bool {
+	select {
+	case <-c.entities:
+		return true
+	default:
+		return false
+	}
+}
+
+func (c *Client) releaseEntity() {
+	select {
+	case c.entities <- struct{}{}:
+	default:
+	}
 }
 
 // FetchPaymentStatus поднимает временный браузер, открывает ссылку и сразу завершает процесс.

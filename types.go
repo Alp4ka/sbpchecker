@@ -48,6 +48,11 @@ type Options struct {
 	// Headless включает безголовый режим Chromium (по умолчанию false).
 	Headless bool
 
+	// EntityPoolSize задаёт количество параллельно обрабатываемых запросов.
+	// Каждая "сущность" может обрабатывать только один запрос одновременно.
+	// Если 0, используется 1.
+	EntityPoolSize int
+
 	// NavigationTimeout — лимит навигации. Ноль означает взять значение из context.Deadline,
 	// или, в случае его отсутствия, использовать DefaultNavigationTimeout.
 	NavigationTimeout time.Duration
@@ -76,6 +81,8 @@ var (
 	ErrClosedClient = fmt.Errorf("%s: client is closed", errPrefix)
 	// ErrInvalidOrderID возвращается, когда передан неверный ID заказа.
 	ErrInvalidOrderID = fmt.Errorf("%s: invalid order ID", errPrefix)
+	// ErrNoFreeEntity возвращается, когда в пуле нет свободной сущности.
+	ErrNoFreeEntity = fmt.Errorf("%s: no free entity", errPrefix)
 )
 
 type NSPKPaymentLinkResponseBody struct {
