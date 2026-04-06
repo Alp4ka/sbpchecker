@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
-	"time"
 
 	"github.com/playwright-community/playwright-go"
 )
