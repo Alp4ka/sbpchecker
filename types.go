@@ -25,13 +25,14 @@ type PaymentStatus string
 const (
 	// PaymentStatusUnknown означает, что по странице нельзя однозначно вывести статус. Так, заявки с протекшим ТТЛ -
 	// однозначно определить нельзя.
-	PaymentStatusUnknown PaymentStatus = "unknown"
+	PaymentStatusUnknown PaymentStatus = "UNKNOWN"
 	// PaymentStatusPending соответствует ожиданию оплаты или обработке.
-	PaymentStatusPending PaymentStatus = "pending"
+	PaymentStatusPending PaymentStatus = "PENDING"
 	// PaymentStatusSuccess соответствует успешному завершению.
-	PaymentStatusSuccess PaymentStatus = "success"
-	// PaymentStatusFailed соответствует отказу, ошибке.
-	PaymentStatusFailed PaymentStatus = "failed"
+	PaymentStatusSuccess PaymentStatus = "SUCCESS"
+	// PaymentStatusAny соответствует состоянию, когда заказ может находиться в любом статусе, но по нему
+	// уже нельзя вытащить информацию.
+	PaymentStatusAny PaymentStatus = "ANY"
 )
 
 // Result агрегирует итог обхода ссылки и распознавания статуса.
@@ -39,7 +40,6 @@ type Result struct {
 	// Status — нормализованный статус платежа.
 	Status PaymentStatus
 	// Detail — краткое пояснение (например, найденная фраза или сообщение детектора).
-	Details        string
 	RemoteResponse *NSPKPaymentLinkResponseBody
 }
 

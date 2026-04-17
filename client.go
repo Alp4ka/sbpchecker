@@ -161,6 +161,8 @@ func (c *Client) FetchPaymentStatus(ctx context.Context, orderID string) (*Resul
 			status = PaymentStatusSuccess
 		case "RQ00000":
 			status = PaymentStatusPending
+		case "RQ05014":
+			status = PaymentStatusAny
 		}
 	}
 	return &Result{

@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	orders := []string{
@@ -28,7 +28,7 @@ func main() {
 
 	wg := sync.WaitGroup{}
 	timeStart := time.Now()
-	for i := 0; i < 40; i++ {
+	for i := 0; i < len(orders); i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
